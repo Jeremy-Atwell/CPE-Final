@@ -45,14 +45,19 @@ volatile unsigned char* my_ADCSRB = (unsigned char*) 0x7B;
 volatile unsigned char* my_ADCSRA = (unsigned char*) 0x7A;
 volatile unsigned int* my_ADC_DATA = (unsigned int*) 0x78;
 
+//Time control
+const long updateTime = 60000;
+unsigned long prevMillis = 0;
+
 const int RS = 11, EN = 12, D4 = 2, D5 = 3, D6 = 4, D7 = 5;
 LiquidCrystal lcd(RS, EN, D4, D5, D6, D7);
 RTC_DS3231 rtc;
 
 void setup()
 {
-    U0init(9600);
+    U0init(9600);   //Initializes serial monitor with baudrate 9600
     int state = 0;
+    attachInterrupt(startButton,state = 1, RISING); //If start button pin goes from LOW to HIGH, set cooler state to idle.
 }
 
 
@@ -85,7 +90,7 @@ void U0init(int U0baud)
  *myUCSR0A = 0x20;
  *myUCSR0B = 0x18;
  *myUCSR0C = 0x06;  //Sets parity to 0 and size to 8 bits
- *myUBRR0  = tbaud; //
+ *myUBRR0  = tbaud; //Sets baudrate of Arduino to 9600
 }
 ///////////////////
 // ADC FUNCTIONS //
@@ -106,6 +111,7 @@ void adc_init()
   *my_ADMUX &= 0xDF;
   *my_ADMUX &= 0b11100000;
 }
+
 unsigned int adc_read(unsigned char adc_channel_num) //work with channel 0
 {
   
@@ -119,4 +125,26 @@ unsigned int adc_read(unsigned char adc_channel_num) //work with channel 0
   while((*my_ADCSRA & 0x40) != 0);
   unsigned int val = (*my_ADC_DATA & 0x03FF);
   return val;
+}
+
+void fanMotor(bool power)  //Function that turns on/off
+{
+    motorPinAPort = 1;
+    motorPinBPort = 1;
+}
+
+//Keeps track of time to update screen once per minute
+void updateFunc()
+{
+    unsigned long currentMillis = millis();
+
+    if(currentMillis - prevMillis == updateTime && state != 0)
+{
+    prevMillis = currentMillis;
+    lcd.setCursor(0,0);
+    lcd.write(humdity);
+    lcd.setCursor(0,1);
+    lcd.write(temp);
+}
+
 }
